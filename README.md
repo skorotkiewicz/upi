@@ -1,6 +1,6 @@
 # upi ⚡️
 
-A minimalistic, lightweight Rust daemon that monitors URLs and triggers local scripts when content changes.
+A simple, lightweight Rust daemon that monitors URLs and triggers local scripts when content changes.
 
 ## Features
 
