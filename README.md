@@ -11,6 +11,18 @@ A simple, lightweight Rust daemon that monitors URLs and triggers local scripts 
 
 ## Installation
 
+### Arch Linux (AUR)
+
+You can install `upi` from the AUR using your favorite helper:
+
+```bash
+yay -S upi
+# or
+paru -S upi
+```
+
+### From Source
+
 ```bash
 # Build from source
 cargo build --release
