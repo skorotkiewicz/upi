@@ -65,11 +65,15 @@ impl State {
     }
 }
 
-async fn run_task(task: &Task, state: &mut State) -> Result<bool> {
+async fn run_task(task: &Task, state: &mut State, client: &reqwest::Client) -> Result<bool> {
     println!("Checking URL: {}", task.url);
     
     // 1. Download
-    let response = reqwest::get(&task.url).await?.text().await?;
+    let resp = client.get(&task.url).send().await?;
+    if !resp.status().is_success() {
+        anyhow::bail!("Failed to fetch URL {}: {}", task.url, resp.status());
+    }
+    let response = resp.text().await?;
     
     // 2. Parse (using the provided command via shell)
     let mut child = Command::new("sh")
@@ -148,6 +152,10 @@ async fn main() -> Result<()> {
 
     let state_file = cli.state_file.clone();
     
+    let client = reqwest::Client::builder()
+        .user_agent("upi/0.1.0")
+        .build()?;
+
     if config.tasks.is_empty() {
         println!("No tasks defined in config. Exiting.");
         return Ok(());
@@ -168,12 +176,13 @@ async fn main() -> Result<()> {
     for task in config.tasks.clone() {
         let state = Arc::clone(&state);
         let state_file = state_file.clone();
+        let client = client.clone();
         set.spawn(async move {
             let mut interval = time::interval(Duration::from_secs(task.update_every));
             loop {
                 interval.tick().await;
                 let mut s = state.lock().await;
-                match run_task(&task, &mut s).await {
+                match run_task(&task, &mut s, &client).await {
                     Ok(changed) => {
                         if changed {
                             if let Err(e) = s.save(&state_file) {
@@ -193,6 +202,7 @@ async fn main() -> Result<()> {
             let state = Arc::clone(&state);
             let state_file = state_file.clone();
             let tasks = config.tasks.clone();
+            let client = client.clone();
             set.spawn(async move {
                 let mut interval = time::interval(Duration::from_secs(global_secs));
                 loop {
@@ -201,7 +211,7 @@ async fn main() -> Result<()> {
                     let mut s = state.lock().await;
                     let mut any_changed = false;
                     for task in &tasks {
-                        match run_task(task, &mut s).await {
+                        match run_task(task, &mut s, &client).await {
                             Ok(changed) => if changed { any_changed = true; },
                             Err(e) => println!("Error running task {} (global): {}", task.url, e),
                         }
