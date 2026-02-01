@@ -37,18 +37,18 @@ Define your tasks in a `config.yml` file:
 
 ```yaml
 # Optional: Global sync interval in seconds
-global-update-every: 3600
+global-check-every: 3600
 
 tasks:
   - url: "https://api.github.com/repos/rust-lang/rust/releases/latest"
     parse: "jq -r .tag_name"
     command: "notify-send 'New Rust Release: $UPI_PARSED'"
-    update-every: 60
+    check-every: 60
 
   - url: "https://status.example.com/api/v1/health"
     parse: "jq .status"
     command: "/etc/scripts/alert-on-change.sh"
-    update-every: 10
+    check-every: 10
 ```
 
 ## Usage
@@ -58,7 +58,7 @@ tasks:
 upi --config config.yml
 
 # Override global interval via CLI
-upi --config config.yml --global-update-every 120
+upi --config config.yml --global-check-every 120
 ```
 
 ### Environment Variables

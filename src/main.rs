@@ -17,9 +17,9 @@ struct Cli {
     #[arg(short, long)]
     config: Option<PathBuf>,
 
-    /// Global update interval in seconds
+    /// Global check interval in seconds
     #[arg(long, rename_all = "kebab-case")]
-    global_update_every: Option<u64>,
+    global_check_every: Option<u64>,
 
     /// State file path
     #[arg(short, long, default_value = "upi-state.json")]
@@ -31,14 +31,14 @@ struct Task {
     url: String,
     parse: String,
     command: String,
-    #[serde(rename = "update-every")]
-    update_every: u64,
+    #[serde(rename = "check-every")]
+    check_every: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct AppConfig {
-    #[serde(default, rename = "global-update-every")]
-    global_update_every: Option<u64>,
+    #[serde(default, rename = "global-check-every")]
+    global_check_every: Option<u64>,
     #[serde(default)]
     tasks: Vec<Task>,
 }
@@ -140,14 +140,14 @@ async fn main() -> Result<()> {
             .with_context(|| "Failed to parse YAML config")?
     } else {
         AppConfig {
-            global_update_every: cli.global_update_every,
+            global_check_every: cli.global_check_every,
             tasks: vec![],
         }
     };
 
-    // If CLI provided a global update interval, it overrides config
-    if cli.global_update_every.is_some() {
-        config.global_update_every = cli.global_update_every;
+    // If CLI provided a global check interval, it overrides config
+    if cli.global_check_every.is_some() {
+        config.global_check_every = cli.global_check_every;
     }
 
     let state_file = cli.state_file.clone();
@@ -178,7 +178,7 @@ async fn main() -> Result<()> {
         let state_file = state_file.clone();
         let client = client.clone();
         set.spawn(async move {
-            let mut interval = time::interval(Duration::from_secs(task.update_every));
+            let mut interval = time::interval(Duration::from_secs(task.check_every));
             loop {
                 interval.tick().await;
                 let mut s = state.lock().await;
@@ -197,7 +197,7 @@ async fn main() -> Result<()> {
     }
 
     // Spawn global task if enabled
-    if let Some(global_secs) = config.global_update_every {
+    if let Some(global_secs) = config.global_check_every {
         if global_secs > 0 {
             let state = Arc::clone(&state);
             let state_file = state_file.clone();
@@ -207,7 +207,7 @@ async fn main() -> Result<()> {
                 let mut interval = time::interval(Duration::from_secs(global_secs));
                 loop {
                     interval.tick().await;
-                    println!("Global update triggered...");
+                    println!("Global check triggered...");
                     let mut s = state.lock().await;
                     let mut any_changed = false;
                     for task in &tasks {
